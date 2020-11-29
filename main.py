@@ -1,4 +1,3 @@
-import datetime
 import requests
 
 from typing import List
@@ -6,7 +5,7 @@ from datetime import datetime
 
 
 class Reporting:
-    def __init__(self, name:str, date: datetime, cases: int, tests: int):
+    def __init__(self, name: str, date: datetime, cases: int, tests: int):
         self.name = name
         self.date = date
         self.cases = cases
@@ -22,7 +21,7 @@ class Reporting:
         return f"{date} {self.name}: {self.positivity}"
 
 
-def parse_state(blob) ->Reporting:
+def parse_state(blob) -> Reporting:
     name = blob["county"]
     date = datetime.fromisoformat(blob["test_date"])
     cases = int(blob["new_positives"])

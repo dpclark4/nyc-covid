@@ -21,22 +21,26 @@ class Reporting:
         return f"{date} {self.name}: {self.positivity}"
 
 
-def parse_state(blob) -> Reporting:
-    name = blob["county"]
-    date = datetime.fromisoformat(blob["test_date"])
-    cases = int(blob["new_positives"])
-    tests = int(blob["total_number_of_tests"])
-    if name == "Richmond":
-        name = "Staten Island"
-    if name == "Kings":
-        name == "Brooklyn"
-    return Reporting(name, date, cases, tests)
+def parse_state(blobs) -> List[Reporting]:
+    reports = []
+    for blob in blobs:
+        name = blob["county"]
+        date = datetime.fromisoformat(blob["test_date"])
+        cases = int(blob["new_positives"])
+        tests = int(blob["total_number_of_tests"])
+        if name == "Richmond":
+            name = "Staten Island"
+        if name == "Kings":
+            name == "Brooklyn"
+        reports.append(Reporting(name, date, cases, tests))
+    return reports
 
 
-def get_state_report(county: str, limit: int = 1) -> Reporting:
-    url = "https://health.data.ny.gov/api/id/xdss-u53e.json?$select=`test_date`,`county`,`new_positives`,`cumulative_number_of_positives`,`total_number_of_tests`,`cumulative_number_of_tests`&$order=`:id`+DESC&$limit={limit}&$offset=0&county='{county}'"
+def get_state_report(county: str, limit: int = 1) -> List[Reporting]:
+    url = "https://health.data.ny.gov/api/id/xdss-u53e.json?$select=`test_date`,`county`,`new_positives`,`cumulative_number_of_positives`,`total_number_of_tests`,`cumulative_number_of_tests`\
+    &$order=`:id`+DESC&$limit={limit}&$offset=0&county='{county}'"
     f_url = url.format(limit=limit, county=county)
-    json = requests.get(f_url).json()[0]
+    json = requests.get(f_url).json()
     return parse_state(json)
 
 
@@ -49,20 +53,22 @@ def compute_citywide(reports: List[Reporting]) -> Reporting:
     return Reporting("NYC", reports[0].date, cases, tests)
 
 
-def get_state_data():
+def get_state_data(days_prior=1):
     counties = ["New York", "Queens", "Kings", "Bronx", "Richmond"]
-    data = dict()
-    date = None
+    reports_by_date = dict()
+    test_dates = []
     for county in counties:
-        report = get_state_report(county)
-        if report.date in data:
-            data[report.date].append(report)
-        else:
-            date = report.date
-            data[report.date] = [report]
-    all = compute_citywide(data[date])
-    print(all)
+        reports = get_state_report(county, days_prior)
+        for report in reports:
+            if report.date in reports_by_date:
+                reports_by_date[report.date].append(report)
+            else:
+                test_dates.append(report.date)
+                reports_by_date[report.date] = [report]
+    print(
+        "\n".join([str(compute_citywide(reports_by_date[date])) for date in test_dates])
+    )
 
 
 if __name__ == "__main__":
-    get_state_data()
+    get_state_data(7)

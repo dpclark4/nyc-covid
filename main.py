@@ -5,20 +5,49 @@ from datetime import datetime
 
 
 class Reporting:
+    moving_avg: float
     def __init__(self, name: str, date: datetime, cases: int, tests: int):
-        self.name = name
-        self.date = date
-        self.cases = cases
-        self.tests = tests
-        self.positivity = round(cases / tests * 100, 2)
+        self._name = name
+        self._date = date
+        self._cases = cases
+        self._tests = tests
+        self._positivity = round(cases / tests * 100, 2)
+
+    @property
+    def date(self) -> datetime:
+        return self._date
+
+    @property
+    def cases(self) -> int:
+        return self._cases
+
+    @property
+    def tests(self) -> int:
+        return self._tests
+
+    @property
+    def positivity(self) -> float:
+        return self._positivity
+
+    @property
+    def moving_avg(self):
+        return self._moving_avg
+
+    @moving_avg.setter
+    def moving_avg(self, mda: float):
+        self._moving_avg = round(mda, 2)
+
+    def to_str(self) -> str:
+        date = self._date.strftime("%Y-%m-%d")
+        if self._moving_avg:
+            return f"{date} {self._name}: {self.positivity:.2f} - 7MDA: {self._moving_avg:.2f}"
+        return f"{date} {self._name}: {self.positivity}"
 
     def __str__(self) -> str:
-        date = self.date.strftime("%Y-%m-%d")
-        return f"{date} {self.name}: {self.positivity}"
+        return self.to_str()
 
     def __repr__(self) -> str:
-        date = self.date.strftime("%Y-%m-%d")
-        return f"{date} {self.name}: {self.positivity}"
+        return self.to_str()
 
 
 def parse_state(blobs) -> List[Reporting]:
@@ -44,31 +73,50 @@ def get_state_report(county: str, limit: int = 1) -> List[Reporting]:
     return parse_state(json)
 
 
-def compute_citywide(reports: List[Reporting]) -> Reporting:
+def compute_7mda(reports: List[Reporting]) -> List[Reporting]:
+    new_reports: List[Reporting] = []
+    for i, report in enumerate(reports):
+        sum = 0.0
+        for window in reports[i : i + 7]:
+            sum += window.positivity
+        report.moving_avg = sum / 7
+        new_reports.append(report)
+    return new_reports
+
+
+def city_rate_by_borough(reports: List[Reporting]) -> Reporting:
     cases = 0
     tests = 0
     for report in reports:
-        cases += report.cases
-        tests += report.tests
+        cases += report._cases
+        tests += report._tests
     return Reporting("NYC", reports[0].date, cases, tests)
 
 
-def get_state_data(days_prior=1):
+def get_state_data(days_prior, compute_mda):
     counties = ["New York", "Queens", "Kings", "Bronx", "Richmond"]
     reports_by_date = dict()
     test_dates = []
+    if compute_mda:
+        days_prior += 7
     for county in counties:
         reports = get_state_report(county, days_prior)
         for report in reports:
-            if report.date in reports_by_date:
-                reports_by_date[report.date].append(report)
+            if report._date in reports_by_date:
+                reports_by_date[report._date].append(report)
             else:
-                test_dates.append(report.date)
-                reports_by_date[report.date] = [report]
-    print(
-        "\n".join([str(compute_citywide(reports_by_date[date])) for date in test_dates])
-    )
+                test_dates.append(report._date)
+                reports_by_date[report._date] = [report]
+
+    city_rate_by_date = []
+    for date in sorted(reports_by_date.keys(), reverse=True):
+        city_rate_by_date.append(city_rate_by_borough(reports_by_date[date]))
+    rates_with_mda = compute_7mda(city_rate_by_date)
+    for r in rates_with_mda[:7]:
+        print(r)
 
 
+# https://www.governor.ny.gov/news/governor-cuomo-details-covid-19-micro-cluster-metrics
+# https://forward.ny.gov/percentage-positive-results-region-dashboard
 if __name__ == "__main__":
-    get_state_data(7)
+    get_state_data(7, True)

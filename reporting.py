@@ -2,7 +2,7 @@ from datetime import datetime
 
 
 class Reporting:
-    moving_avg: float
+    _moving_avg: float
 
     def __init__(self, name: str, date: datetime, cases: int, tests: int):
         self._name = name

@@ -28,14 +28,32 @@ def get_state_report(county: str, limit: int = 1) -> List[Reporting]:
     return parse_state(json)
 
 
+def simple_mda(report: Reporting, trailing_reports: List[Reporting]) -> Reporting:
+    new_report = report
+    sum = 0.0
+    assert len(trailing_reports) == 7
+    for window in trailing_reports:
+        sum += window.positivity
+    new_report.moving_avg = sum / 7
+    return new_report
+
+
+def all_mda(report: Reporting, trailing_reports: List[Reporting]) -> Reporting:
+    new_report = report
+    cases = 0
+    tests = 0
+    assert len(trailing_reports) == 7
+    for window in trailing_reports:
+        cases += window.cases
+        tests += window.tests
+    new_report.moving_avg = cases / tests * 100
+    return new_report
+
+
 def compute_7mda(reports: List[Reporting]) -> List[Reporting]:
     new_reports: List[Reporting] = []
-    for i, report in enumerate(reports):
-        sum = 0.0
-        for window in reports[i : i + 7]:
-            sum += window.positivity
-        report.moving_avg = sum / 7
-        new_reports.append(report)
+    for i, report in enumerate(reports[:7]):
+        new_reports.append(all_mda(report, reports[i : i + 7]))
     return new_reports
 
 
@@ -43,8 +61,8 @@ def city_rate_by_borough(reports: List[Reporting]) -> Reporting:
     cases = 0
     tests = 0
     for report in reports:
-        cases += report._cases
-        tests += report._tests
+        cases += report.cases
+        tests += report.tests
     return Reporting("NYC", reports[0].date, cases, tests)
 
 

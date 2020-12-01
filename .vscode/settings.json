@@ -1,0 +1,7 @@
+{
+    "python.pythonPath": "/home/dan/.cache/pypoetry/virtualenvs/covid-2iEw-QeK-py3.8/bin/python",
+    "editor.formatOnSave": true,
+    "python.analysis.completeFunctionParens": true,
+    "python.formatting.provider": "black",
+    "python.linting.mypyEnabled": true
+}
